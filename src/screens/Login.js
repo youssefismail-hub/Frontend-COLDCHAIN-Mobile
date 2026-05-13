@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from "react-native";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = ({ navigation }) => {
   const [userData, setUserData] = useState({
@@ -15,24 +16,25 @@ const Login = ({ navigation }) => {
   });
 
   const inputChangeHandler = (value, name) => {
-    setUserData({ ...userData, [name]: value });
+    setUserData({ ...userData, [name]: value });  // lazem nes2el alaha  
   };
 
-  const loginHandler = () => {
-    axios
-      .post("http://localhost:1234/api/signIn", userData)
-      .then((res) => {
-        const token = res.data.token;
+const loginHandler = () => {
+  axios
+    .post("http://localhost:1234/api/signIn", userData)
+    .then(async (res) => {
+      const token = res.data.token;
 
-        console.log("Logged in ");
+      //  Save token locally
+      await AsyncStorage.setItem("token", token);
 
-        navigation.navigate("Dashboard", { token });
-      })
-      .catch((error) => {
-        console.log(error.response?.data || error.message);
-        alert("Login Failed !");
-      });
-  };
+      navigation.replace("Dashboard"); // lazem nes2el alaha 
+    })
+    .catch((error) => {
+      console.log(error.response?.data || error.message);
+      alert("Login Failed !");
+    });
+};
 
   return (
     <View style={styles.container}>
