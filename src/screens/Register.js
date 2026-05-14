@@ -22,13 +22,13 @@ const Register = ({ navigation }) => {
 
   const registerHandler = () => {
     axios
-      .post("http://localhost/api/signUp", userData)
+      .post("http://20.20.22.203:1234/api/signUp", userData)
       .then(() => {
-        alert("Account Created ✅");
+        alert("Account Created ");
         navigation.navigate("Login");
       })
       .catch(() => {
-        alert("Register Failed ❌");
+        alert("Register Failed !!!  ");
       });
   };
 

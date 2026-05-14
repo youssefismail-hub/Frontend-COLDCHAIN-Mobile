@@ -16,23 +16,27 @@ const Login = ({ navigation }) => {
   });
 
   const inputChangeHandler = (value, name) => {
-    setUserData({ ...userData, [name]: value });  // lazem nes2el alaha  
+    setUserData({ ...userData, [name]: value });   
   };
 
 const loginHandler = () => {
   axios
-    .post("http://localhost:1234/api/signIn", userData)
+    .post("http://20.20.22.203:1234/api/signIn", userData)
     .then(async (res) => {
+  
       const token = res.data.token;
 
       //  Save token locally
       await AsyncStorage.setItem("token", token);
 
-      navigation.replace("Dashboard"); // lazem nes2el alaha 
+      navigation.replace("Dashboard"); 
     })
     .catch((error) => {
       console.log(error.response?.data || error.message);
       alert("Login Failed !");
+       console.log("FULL ERROR:", error);
+    console.log("RESPONSE:", error.response?.data);
+    alert(JSON.stringify(error.response?.data));
     });
 };
 
