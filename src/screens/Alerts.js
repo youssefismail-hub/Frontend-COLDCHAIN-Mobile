@@ -6,8 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
 import Header from "../components/Header";
 
 const Alerts = () => {
@@ -15,21 +14,13 @@ const Alerts = () => {
 
   useEffect(() => {
     const loadAlerts = async () => {
-      const token = await AsyncStorage.getItem("token");
-
-      axios
-        .get("http://20.20.22.203:1234/api/alerts", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+      api
+        .get("/api/alerts")
         .then((res) => {
           setAlerts(res.data.data);
-           
         })
         .catch((err) => {
-          console.log("Network Error:", err.message);
-           
+          console.error("Failed to load alerts:", err.message);
         });
     };
 
@@ -37,18 +28,8 @@ const Alerts = () => {
   }, []);
 
   const resolveAlert = async (alertId) => {
-    const token = await AsyncStorage.getItem("token");
-
-    axios
-      .patch(
-        `http://20.20.22.203:1234/api/alerts/${alertId}/resolve`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
+    api
+      .patch(`/api/alerts/${alertId}/resolve`, {})
       .then(() => {
         setAlerts((prev) =>
           prev.map((a) =>
@@ -57,7 +38,7 @@ const Alerts = () => {
         );
       })
       .catch((err) => {
-        console.log(err.message);
+        console.error("Failed to resolve alert:", err.message);
       });
   };
 

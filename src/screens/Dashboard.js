@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import axios from "axios";
+import api from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Header from "../components/Header";
 
@@ -21,21 +21,13 @@ const Dashboard = ({ navigation }) => {
 
   useEffect(() => {
     const loadTrucks = async () => {
-      const token = await AsyncStorage.getItem("token");
-
-      axios
-        .get("http://20.20.22.203:1234/api/trucks", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+      api
+        .get("/api/trucks")
         .then((res) => {
           setTrucks(res.data.data);
-          
         })
         .catch((err) => {
-          console.log(err.message);
-          
+          console.error("Failed to load trucks:", err.message);
         });
     };
 

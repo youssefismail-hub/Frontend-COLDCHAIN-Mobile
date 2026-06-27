@@ -7,8 +7,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../services/api";
 import { LineChart } from "react-native-chart-kit";
 import Header from "../components/Header";
 
@@ -22,18 +21,10 @@ const TruckDetails = ({ route }) => {
   const [loading, setLoading] = useState(false);
 
   const loadTelemetry = async (pageNumber = 1) => {
-    const token = await AsyncStorage.getItem("token"); 
     setLoading(true);
 
-    axios
-      .get(
-        `http://20.20.22.203:1234/api/telemetry/${truckId}?page=${pageNumber}&limit=10`, 
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
+    api
+      .get(`/api/telemetry/${truckId}?page=${pageNumber}&limit=10`)
       .then((res) => {
         if (pageNumber === 1) {
           setTelemetry(res.data.data);
@@ -44,7 +35,7 @@ const TruckDetails = ({ route }) => {
         
       })
       .catch((err) => {
-        console.log(err.message);
+        console.error("Failed to load telemetry:", err.message);
         setLoading(false);
       });
   };

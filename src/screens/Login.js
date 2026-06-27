@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import axios from "axios";
+import api, { API_URL } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = ({ navigation }) => {
@@ -20,8 +20,8 @@ const Login = ({ navigation }) => {
   };
 
 const loginHandler = () => {
-  axios
-    .post("http://20.20.22.203:1234/api/signIn", userData)
+  api
+    .post("/api/signIn", userData)
     .then(async (res) => {
   
       const token = res.data.token;
@@ -32,11 +32,12 @@ const loginHandler = () => {
       navigation.replace("Dashboard"); 
     })
     .catch((error) => {
-      console.log(error.response?.data || error.message);
-      alert("Login Failed !");
-       console.log("FULL ERROR:", error);
-    console.log("RESPONSE:", error.response?.data);
-    alert(JSON.stringify(error.response?.data));
+      const isNetworkError = !error.response && error.message === "Network Error";
+      const message = isNetworkError
+        ? `Cannot reach server at ${API_URL}. Start the backend and check EXPO_PUBLIC_API_URL in .env`
+        : error.response?.data?.message || "Login failed. Check your credentials.";
+
+      alert(message);
     });
 };
 
