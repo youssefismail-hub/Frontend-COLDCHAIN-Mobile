@@ -9,7 +9,10 @@ import {
 import api from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Header from "../components/Header";
-
+import GlassCard from "../components/GlassCard";
+import StatusBadge from "../components/StatusBadge";
+import PrimaryButton from "../components/PrimaryButton";
+import { colors, spacing, typography } from "../theme";
 
 const Dashboard = ({ navigation }) => {
   const [trucks, setTrucks] = useState([]);
@@ -34,13 +37,6 @@ const Dashboard = ({ navigation }) => {
     loadTrucks();
   }, []);
 
-  const getStatusColor = (status) => {
-    if (status === "CRITICAL") return "#ff4d4d";
-    if (status === "WARNING") return "#ffa500";
-    if (status === "OK") return "#28a745";
-    return "#999";
-  };
-
   return (
     <View style={styles.container}>
       <Header title="Dashboard" />
@@ -48,7 +44,7 @@ const Dashboard = ({ navigation }) => {
       <FlatList
         data={trucks}
         keyExtractor={(item) => item._id}
-        
+        contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() =>
@@ -56,40 +52,35 @@ const Dashboard = ({ navigation }) => {
                 truckId: item._id,
               })
             }
-            style={styles.card}
+            activeOpacity={0.9}
           >
-            <View style={styles.cardHeader}>
-              <Text style={styles.truckName}>{item.name}</Text>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusColor(item.status) },
-                ]}
-              >
-                <Text style={styles.statusText}>{item.status}</Text>
+            <GlassCard>
+              <View style={styles.cardHeader}>
+                <Text style={styles.truckName}>{item.name}</Text>
+                <StatusBadge status={item.status} />
               </View>
-            </View>
 
-            <Text style={styles.plate}>
-              Plate: {item.plate_number}
-            </Text>
+              <Text style={styles.plate}>
+                PLATE: {item.plate_number}
+              </Text>
+            </GlassCard>
           </TouchableOpacity>
         )}
       />
 
-      <TouchableOpacity
-        onPress={() => navigation.navigate("Alerts")}
-        style={styles.alertButton}
-      >
-        <Text style={styles.alertText}>View Alerts</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={logoutHandler}
-        style={styles.logoutButton}
-      >
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
+      <View style={styles.actionContainer}>
+        <PrimaryButton 
+          title="View Alerts" 
+          onPress={() => navigation.navigate("Alerts")} 
+          style={styles.actionButton}
+        />
+        <PrimaryButton 
+          title="Logout" 
+          variant="danger"
+          onPress={logoutHandler} 
+          style={styles.actionButton}
+        />
+      </View>
     </View>
   );
 };
@@ -99,64 +90,35 @@ export default Dashboard;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fa",
-    padding: 20,
+    backgroundColor: colors.background,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 20,
-  },
-  card: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
-    elevation: 3,
+  listContent: {
+    padding: spacing.lg,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: spacing.xs,
   },
   truckName: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: typography.sizes.lg,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    fontFamily: typography.fonts.sans,
   },
   plate: {
-    marginTop: 8,
-    color: "#666",
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    fontFamily: typography.fonts.mono,
+    letterSpacing: 1,
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+  actionContainer: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
   },
-  statusText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 12,
-  },
-  alertButton: {
-    backgroundColor: "#007AFF",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  alertText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  logoutButton: {
-    backgroundColor: "#ff4d4d",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  logoutText: {
-    color: "#fff",
-    fontWeight: "bold",
+  actionButton: {
+    width: '100%',
   },
 });

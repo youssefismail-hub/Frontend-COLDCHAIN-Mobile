@@ -3,11 +3,14 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
   StyleSheet,
 } from "react-native";
 import api from "../services/api";
 import Header from "../components/Header";
+import GlassCard from "../components/GlassCard";
+import StatusBadge from "../components/StatusBadge";
+import PrimaryButton from "../components/PrimaryButton";
+import { colors, spacing, typography } from "../theme";
 
 const Alerts = () => {
   const [alerts, setAlerts] = useState([]);
@@ -42,12 +45,6 @@ const Alerts = () => {
       });
   };
 
-  const getSeverityColor = (severity) => {
-    if (severity === "CRITICAL") return "#ff4d4d";
-    if (severity === "WARNING") return "#ffa500";
-    return "#007AFF";
-  };
-
   return (
     <View style={styles.container}>
       <Header title="Alerts" />
@@ -55,42 +52,33 @@ const Alerts = () => {
       <FlatList
         data={alerts}
         keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <GlassCard style={styles.card}>
             <View style={styles.header}>
               <Text style={styles.type}>{item.type}</Text>
-
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: getSeverityColor(item.severity) },
-                ]}
-              >
-                <Text style={styles.badgeText}>
-                  {item.severity}
-                </Text>
-              </View>
+              <StatusBadge status={item.severity} />
             </View>
 
             <Text style={styles.message}>
               {item.message}
             </Text>
 
-            <Text style={styles.status}>
-              Status: {item.resolved ? "Resolved ✅" : "Active ❗"}
-            </Text>
+            <View style={styles.footer}>
+              <Text style={[styles.status, item.resolved && styles.statusResolved]}>
+                {item.resolved ? "RESOLVED" : "ACTIVE"}
+              </Text>
 
-            {!item.resolved && (
-              <TouchableOpacity
-                onPress={() => resolveAlert(item._id)}
-                style={styles.resolveButton}
-              >
-                <Text style={styles.resolveText}>
-                  Resolve Alert
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              {!item.resolved && (
+                <PrimaryButton 
+                  title="Resolve"
+                  variant="primary"
+                  onPress={() => resolveAlert(item._id)}
+                  style={styles.resolveButton}
+                />
+              )}
+            </View>
+          </GlassCard>
         )}
       />
     </View>
@@ -102,57 +90,53 @@ export default Alerts;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f7fa",
-    padding: 20,
+    backgroundColor: colors.background,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 20,
+  listContent: {
+    padding: spacing.lg,
   },
   card: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
-    elevation: 3,
+    marginBottom: spacing.md,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: spacing.sm,
   },
   type: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  badgeText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 12,
+    fontSize: typography.sizes.md,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    fontFamily: typography.fonts.sans,
   },
   message: {
-    marginTop: 8,
-    color: "#555",
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceVariant,
+    paddingTop: spacing.sm,
   },
   status: {
-    marginTop: 8,
+    fontSize: typography.sizes.sm,
     fontWeight: "bold",
+    fontFamily: typography.fonts.mono,
+    color: colors.error,
+  },
+  statusResolved: {
+    color: colors.success,
   },
   resolveButton: {
-    backgroundColor: "#28a745",
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 10,
-    alignItems: "center",
-  },
-  resolveText: {
-    color: "#fff",
-    fontWeight: "bold",
+    minHeight: 36,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
   },
 });
