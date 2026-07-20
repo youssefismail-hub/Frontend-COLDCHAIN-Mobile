@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { colors, rounded, spacing } from '../theme';
+import { colors, rounded, spacing, shadows } from '../theme';
 
-const GlassCard = ({ children, style }) => {
+const GlassCard = ({ children, style, variant = 'default' }) => {
   return (
-    <View style={[styles.card, style]}>
+    <View style={[styles.card, variant === 'elevated' && styles.elevated, style]}>
       {children}
     </View>
   );
@@ -12,17 +12,15 @@ const GlassCard = ({ children, style }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Simulated glassmorphism
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderRadius: rounded.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 3,
-    marginBottom: spacing.md,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    ...shadows.card,
+  },
+  elevated: {
+    ...shadows.lg,
   },
 });
 

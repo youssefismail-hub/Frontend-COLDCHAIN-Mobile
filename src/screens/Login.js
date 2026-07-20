@@ -7,50 +7,58 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from "react-native";
 import api, { API_URL } from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GlassCard from "../components/GlassCard";
 import PrimaryButton from "../components/PrimaryButton";
-import { colors, spacing, typography, rounded } from "../theme";
+import { colors, spacing, typography, rounded, shadows } from "../theme";
 
 const Login = ({ navigation }) => {
-  const [userData, setUserData] = useState({
-    email: "",
-    password: "",
-  });
+  const [userData, setUserData] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
 
   const inputChangeHandler = (value, name) => {
-    setUserData({ ...userData, [name]: value });   
+    setUserData({ ...userData, [name]: value });
   };
 
   const loginHandler = () => {
+    setLoading(true);
     api
       .post("/api/signIn", userData)
       .then(async (res) => {
         const token = res.data.token;
         await AsyncStorage.setItem("token", token);
-        navigation.replace("Dashboard"); 
+        setLoading(false);
+        navigation.replace("Main");
       })
       .catch((error) => {
+        setLoading(false);
         const isNetworkError = !error.response && error.message === "Network Error";
         const message = isNetworkError
           ? `Cannot reach server at ${API_URL}. Start the backend and check EXPO_PUBLIC_API_URL in .env`
           : error.response?.data?.message || "Login failed. Check your credentials.";
-
         alert(message);
       });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <View style={styles.content}>
-          <Text style={styles.title}>ColdGuard</Text>
-          <Text style={styles.subtitle}>Intelligence Dashboard</Text>
+          <View style={styles.brandSection}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoIcon}>❄️</Text>
+            </View>
+            <Text style={styles.title}>ColdGuard</Text>
+            <Text style={styles.subtitle}>Intelligence Dashboard</Text>
+            <Text style={styles.tagline}>Cold Chain Monitoring Platform</Text>
+          </View>
 
           <GlassCard style={styles.card}>
             <View style={styles.inputContainer}>
@@ -62,7 +70,7 @@ const Login = ({ navigation }) => {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 placeholder="driver@coldguard.com"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.outline}
               />
             </View>
 
@@ -74,16 +82,21 @@ const Login = ({ navigation }) => {
                 value={userData.password}
                 onChangeText={(txt) => inputChangeHandler(txt, "password")}
                 placeholder="••••••••"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.outline}
               />
             </View>
 
-            <PrimaryButton 
-              title="Secure Login" 
-              onPress={loginHandler} 
+            <PrimaryButton
+              title="Secure Login"
+              onPress={loginHandler}
               style={styles.button}
+              loading={loading}
             />
           </GlassCard>
+
+          <Text style={styles.footerText}>
+            Secured by Arctic Encryption Protocol
+          </Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -103,48 +116,79 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: "center",
-    padding: spacing.xl,
+    padding: spacing.edgeMargin,
+  },
+  brandSection: {
+    alignItems: "center",
+    marginBottom: spacing.xl * 1.5,
+  },
+  logoContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: rounded.xl,
+    backgroundColor: colors.primaryContainer,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+    ...shadows.lg,
+  },
+  logoIcon: {
+    fontSize: 36,
   },
   title: {
-    fontSize: typography.sizes.xxl,
+    fontSize: typography.headlineLgMobile.fontSize,
     fontWeight: "700",
-    color: colors.primary,
+    color: colors.onBackground,
     fontFamily: typography.fonts.sans,
-    textAlign: "center",
-    letterSpacing: -1,
+    letterSpacing: typography.headlineLgMobile.letterSpacing,
   },
   subtitle: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.bodyLg.fontSize,
     color: colors.secondary,
     fontFamily: typography.fonts.mono,
-    textAlign: "center",
-    marginBottom: spacing.xl * 2,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginTop: spacing.xs,
+  },
+  tagline: {
+    fontSize: typography.bodySm.fontSize,
+    color: colors.onSurfaceVariant,
+    marginTop: spacing.xs,
   },
   card: {
-    padding: spacing.xl,
+    padding: spacing.lg,
   },
   inputContainer: {
     marginBottom: spacing.lg,
   },
   label: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
+    fontSize: typography.labelCaps.fontSize,
+    color: colors.outline,
     fontFamily: typography.fonts.mono,
-    fontWeight: "600",
+    fontWeight: "500",
+    letterSpacing: 0.6,
     marginBottom: spacing.xs,
-    letterSpacing: 1,
   },
   input: {
-    borderBottomWidth: 2,
-    borderColor: colors.surfaceVariant,
-    paddingVertical: spacing.sm,
-    fontSize: typography.sizes.md,
-    color: colors.textPrimary,
+    backgroundColor: "#f1f5f9",
+    borderRadius: rounded.md,
+    borderWidth: 1.5,
+    borderColor: colors.outlineVariant,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    fontSize: typography.bodyLg.fontSize,
+    color: colors.onSurface,
     fontFamily: typography.fonts.sans,
   },
   button: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
+  },
+  footerText: {
+    textAlign: "center",
+    fontSize: typography.bodySm.fontSize,
+    color: colors.outline,
+    marginTop: spacing.xl,
+    fontFamily: typography.fonts.mono,
+    letterSpacing: 0.3,
   },
 });

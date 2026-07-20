@@ -1,10 +1,23 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { colors, typography, spacing, rounded } from "../theme";
 
-const Header = ({ title }) => {
+const Header = ({ title, showBack = false, onBack, rightAction }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+      <View style={styles.leftSection}>
+        {showBack && (
+          <TouchableOpacity onPress={onBack} style={styles.backButton} activeOpacity={0.7}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={styles.title}>{title}</Text>
+      </View>
+      {rightAction && (
+        <TouchableOpacity onPress={rightAction.onPress} style={styles.rightButton} activeOpacity={0.7}>
+          <Text style={styles.rightIcon}>🔔</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -13,18 +26,39 @@ export default Header;
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 10,
-    paddingBottom: 5,
-    backgroundColor: "#007AFF",
+    flexDirection: "row",
     alignItems: "center",
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.edgeMargin,
+    height: 56,
+    backgroundColor: `${colors.surface}cc`,
+    borderBottomWidth: 1,
+    borderBottomColor: `${colors.outlineVariant}4d`,
+  },
+  leftSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  backButton: {
+    padding: spacing.xs,
+  },
+  backIcon: {
+    fontSize: 20,
+    color: colors.secondary,
   },
   title: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: typography.headlineMd.fontSize,
+    fontWeight: "700",
+    color: colors.primary,
+    fontFamily: typography.fonts.sans,
+    letterSpacing: typography.headlineMd.letterSpacing || 0,
+  },
+  rightButton: {
+    padding: spacing.xs,
+  },
+  rightIcon: {
+    fontSize: 18,
+    color: colors.secondary,
   },
 });
