@@ -172,6 +172,72 @@ const ShipmentDetails = ({ route, navigation }) => {
             )}
 
             <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Sensor Status</Text>
+            </View>
+            <View style={styles.sensorList}>
+              <View style={styles.sensorItem}>
+                <View style={styles.sensorItemLeft}>
+                  <View style={styles.sensorItemIconWrap}>
+                    <Text style={styles.sensorItemIcon}>📡</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.sensorItemName}>Probe A</Text>
+                    <Text style={styles.sensorItemDesc}>Ambient Zone</Text>
+                  </View>
+                </View>
+                <View style={[styles.sensorStatusBadge, { backgroundColor: `${colors.onTertiaryContainer}1a` }]}>
+                  <Text style={[styles.sensorStatusBadgeText, { color: colors.onTertiaryContainer }]}>ACTIVE</Text>
+                </View>
+              </View>
+              <View style={styles.sensorItem}>
+                <View style={styles.sensorItemLeft}>
+                  <View style={styles.sensorItemIconWrap}>
+                    <Text style={styles.sensorItemIcon}>🌡️</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.sensorItemName}>Probe B</Text>
+                    <Text style={styles.sensorItemDesc}>Core Temp</Text>
+                  </View>
+                </View>
+                <View style={[styles.sensorStatusBadge, { backgroundColor: `${colors.secondary}1a` }]}>
+                  <Text style={[styles.sensorStatusBadgeText, { color: colors.secondary }]}>CALIBRATING</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Manifest Details</Text>
+            </View>
+            <View style={styles.manifestGrid}>
+              <View style={styles.manifestItem}>
+                <Text style={styles.manifestLabel}>WEIGHT</Text>
+                <Text style={styles.manifestValue}>1,240 kg</Text>
+              </View>
+              <View style={styles.manifestItem}>
+                <Text style={styles.manifestLabel}>PALLETS</Text>
+                <Text style={styles.manifestValue}>04 Units</Text>
+              </View>
+              <View style={[styles.manifestItem, styles.manifestItemFull]}>
+                <View style={styles.manifestItemFullContent}>
+                  <View>
+                    <Text style={styles.manifestLabel}>CARGO TYPE</Text>
+                    <Text style={styles.manifestItemFullValue}>Biopharmaceutical (Class A)</Text>
+                  </View>
+                  <Text style={styles.manifestItemFullIcon}>💊</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.downloadButton}
+              activeOpacity={0.85}
+              onPress={() => alert("Report download coming soon")}
+            >
+              <Text style={styles.downloadButtonIcon}>📥</Text>
+              <Text style={styles.downloadButtonText}>Download Full Report</Text>
+            </TouchableOpacity>
+
+            <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Telemetry History</Text>
             </View>
           </>
@@ -440,6 +506,127 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: typography.bodySm.fontSize,
     color: colors.onSurfaceVariant,
+    fontFamily: typography.fonts.sans,
+  },
+  sensorList: {
+    marginBottom: spacing.lg,
+  },
+  sensorItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.md,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: rounded.lg,
+    borderWidth: 1,
+    borderColor: `${colors.outlineVariant}33`,
+    marginBottom: spacing.sm,
+  },
+  sensorItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+  },
+  sensorItemIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: rounded.md,
+    backgroundColor: `${colors.secondary}1a`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sensorItemIcon: {
+    fontSize: 18,
+  },
+  sensorItemName: {
+    fontSize: typography.bodyLg.fontSize,
+    fontWeight: "600",
+    color: colors.onSurface,
+    fontFamily: typography.fonts.sans,
+  },
+  sensorItemDesc: {
+    fontSize: typography.bodySm.fontSize,
+    color: colors.onSurfaceVariant,
+    fontFamily: typography.fonts.sans,
+    marginTop: 2,
+  },
+  sensorStatusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: rounded.full,
+  },
+  sensorStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    fontFamily: typography.fonts.mono,
+    letterSpacing: 0.6,
+  },
+  manifestGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  manifestItem: {
+    width: "48%",
+    padding: spacing.md,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: rounded.lg,
+    borderWidth: 1,
+    borderColor: `${colors.outlineVariant}33`,
+  },
+  manifestItemFull: {
+    width: "100%",
+  },
+  manifestItemFullContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  manifestItemFullValue: {
+    fontSize: typography.bodyLg.fontSize,
+    fontWeight: "600",
+    color: colors.onSurface,
+    fontFamily: typography.fonts.sans,
+    marginTop: spacing.xs,
+  },
+  manifestItemFullIcon: {
+    fontSize: 20,
+    color: colors.secondary,
+  },
+  manifestLabel: {
+    fontSize: 10,
+    fontFamily: typography.fonts.mono,
+    fontWeight: "500",
+    color: colors.outline,
+    letterSpacing: 0.6,
+  },
+  manifestValue: {
+    fontSize: typography.dataDisplay.fontSize,
+    fontWeight: "600",
+    color: colors.onSurface,
+    fontFamily: typography.fonts.mono,
+    marginTop: spacing.xs,
+  },
+  downloadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.primaryContainer,
+    paddingVertical: spacing.md + 4,
+    borderRadius: rounded.lg,
+    marginBottom: spacing.lg,
+    ...shadows.sm,
+  },
+  downloadButtonIcon: {
+    fontSize: 18,
+  },
+  downloadButtonText: {
+    fontSize: typography.bodyLg.fontSize,
+    fontWeight: "600",
+    color: colors.onPrimary,
     fontFamily: typography.fonts.sans,
   },
 });

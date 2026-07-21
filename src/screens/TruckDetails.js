@@ -83,7 +83,7 @@ const TruckDetails = ({ route }) => {
               backgroundGradientTo: colors.surface,
               decimalPlaces: 1,
               color: () => colors.secondary,
-              labelColor: () => colors.textSecondary,
+              labelColor: () => colors.onSurfaceVariant,
               style: {
                 borderRadius: 16
               },
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     fontFamily: typography.fonts.mono,
     fontWeight: "700",
-    color: colors.textSecondary,
+    color: colors.onSurfaceVariant,
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
     marginBottom: spacing.sm,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
+    color: colors.onSurfaceVariant,
     fontFamily: typography.fonts.sans,
   },
   loader: {

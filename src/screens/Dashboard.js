@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -39,7 +38,6 @@ const Dashboard = ({ navigation }) => {
   }, [loadTrucks]);
 
   const criticalCount = trucks.filter((t) => t.status === "CRITICAL").length;
-  const stableCount = trucks.filter((t) => ["OK", "SAFE", "STABLE"].includes(t.status)).length;
 
   const getStatusIcon = (status) => {
     switch (status?.toUpperCase()) {
@@ -49,7 +47,42 @@ const Dashboard = ({ navigation }) => {
     }
   };
 
-  const renderHeader = () => (
+  const getTempForTruck = (truck) => {
+    if (truck.last_temperature !== undefined) return truck.last_temperature;
+    return null;
+  };
+
+  const getFuelForTruck = (truck) => {
+    if (truck.fuel_level !== undefined) return truck.fuel_level;
+    return null;
+  };
+
+  const getProgressForTruck = (truck) => {
+    if (truck.progress !== undefined) return truck.progress;
+    if (truck.fuel_level !== undefined) return truck.fuel_level;
+    return 50;
+  };
+
+  const renderTopBar = () => (
+    <View style={styles.topBar}>
+      <View style={styles.topBarLeft}>
+        <View style={styles.logoIconWrap}>
+          <Text style={styles.logoIcon}>❄️</Text>
+        </View>
+        <Text style={styles.topBarTitle}>ColdGuard</Text>
+      </View>
+      <View style={styles.topBarRight}>
+        <TouchableOpacity style={styles.topBarBtn} activeOpacity={0.7}>
+          <Text style={styles.topBarBtnIcon}>🔔</Text>
+        </TouchableOpacity>
+        <View style={styles.avatarWrap}>
+          <Text style={styles.avatarText}>U</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderHero = () => (
     <>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryContainer} />
       <View style={styles.heroSection}>
@@ -79,49 +112,129 @@ const Dashboard = ({ navigation }) => {
           </View>
         </View>
       </View>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Fleet Health</Text>
-        <TouchableOpacity>
-          <Text style={styles.sectionAction}>VIEW ALL</Text>
-        </TouchableOpacity>
-      </View>
     </>
   );
 
-  const renderTruckCard = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => navigation.navigate("ShipmentDetails", { truckId: item._id })}
-      activeOpacity={0.85}
-      style={styles.cardWrapper}
-    >
-      <GlassCard style={styles.fleetCard}>
-        <View style={styles.fleetCardHeader}>
-          <View style={styles.fleetCardLeft}>
-            <Text style={styles.fleetCardIcon}>🚚</Text>
-            <Text style={styles.fleetCardName}>{item.name}</Text>
+  const renderFleetHealth = () => (
+    <View style={styles.fleetSection}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Fleet Health</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Shipments")}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.sectionAction}>VIEW ALL</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.fleetScrollContent}
+      >
+        {trucks.length === 0 ? (
+          <View style={styles.fleetEmptyCard}>
+            <GlassCard style={styles.fleetCard}>
+              <Text style={styles.fleetEmptyText}>No vehicles in fleet</Text>
+            </GlassCard>
           </View>
-          <StatusBadge status={item.status} size="small" />
-        </View>
-        <View style={styles.fleetCardData}>
-          <View>
-            <Text style={styles.fleetCardLabel}>PLATE</Text>
-            <Text style={styles.fleetCardValue}>{item.plate_number}</Text>
-          </View>
-          <View style={styles.fleetCardRight}>
-            <Text style={styles.fleetCardLabel}>STATUS</Text>
-            <Text style={styles.fleetCardValue}>{getStatusIcon(item.status)} {item.status || "N/A"}</Text>
-          </View>
-        </View>
-      </GlassCard>
-    </TouchableOpacity>
+        ) : (
+          trucks.map((truck) => {
+            const temp = getTempForTruck(truck);
+            const fuel = getFuelForTruck(truck);
+            const progress = getProgressForTruck(truck);
+            return (
+              <TouchableOpacity
+                key={truck._id}
+                onPress={() => navigation.navigate("ShipmentDetails", { truckId: truck._id })}
+                activeOpacity={0.85}
+                style={styles.fleetCardWrapper}
+              >
+                <GlassCard style={styles.fleetCard}>
+                  <View style={styles.fleetCardHeader}>
+                    <View style={styles.fleetCardLeft}>
+                      <Text style={styles.fleetCardIcon}>🚚</Text>
+                      <Text style={styles.fleetCardName}>{truck.plate_number || truck.name}</Text>
+                    </View>
+                    <StatusBadge status={truck.status} size="small" />
+                  </View>
+                  <View style={styles.fleetCardData}>
+                    <View style={styles.fleetCardDataItem}>
+                      <Text style={styles.fleetCardLabel}>Temp</Text>
+                      <Text style={[styles.fleetCardDataValue, temp !== null && temp > 8 && { color: colors.error }]}>
+                        {temp !== null ? `${temp.toFixed(1)}°C` : "N/A"}
+                      </Text>
+                    </View>
+                    <View style={styles.fleetCardDataItemRight}>
+                      <Text style={styles.fleetCardLabel}>Fuel</Text>
+                      <Text style={styles.fleetCardDataValue}>
+                        {fuel !== null ? `${fuel}%` : "N/A"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.progressBar}>
+                    <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }, progress < 20 && { backgroundColor: colors.error }]} />
+                  </View>
+                </GlassCard>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </ScrollView>
+    </View>
   );
 
-  const renderFooter = () => (
-    <View style={styles.footerSection}>
+  const renderRecentShipments = () => (
+    <View style={styles.recentSection}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Text style={styles.sectionTitle}>Recent Shipments</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Shipments")}
+          activeOpacity={0.7}
+          style={styles.filterBtn}
+        >
+          <Text style={styles.filterIcon}>🔍</Text>
+        </TouchableOpacity>
       </View>
+      <View style={styles.recentList}>
+        {trucks.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>📦</Text>
+            <Text style={styles.emptyTitle}>No Shipments</Text>
+            <Text style={styles.emptySubtitle}>No active shipments in the fleet</Text>
+          </View>
+        ) : (
+          trucks.slice(0, 4).map((truck) => (
+            <TouchableOpacity
+              key={truck._id}
+              onPress={() => navigation.navigate("ShipmentDetails", { truckId: truck._id })}
+              activeOpacity={0.85}
+            >
+              <View style={styles.recentItem}>
+                <View style={styles.recentItemLeft}>
+                  <View style={[styles.recentItemIconWrap, truck.status === "CRITICAL" && styles.recentItemIconError]}>
+                    <Text style={styles.recentItemIcon}>
+                      {truck.status === "CRITICAL" ? "⚠️" : "📦"}
+                    </Text>
+                  </View>
+                  <View style={styles.recentItemInfo}>
+                    <Text style={styles.recentItemId}>{truck.name}</Text>
+                    <Text style={styles.recentItemRoute}>PLATE: {truck.plate_number}</Text>
+                  </View>
+                </View>
+                <View style={styles.recentItemRight}>
+                  <StatusBadge status={truck.status} size="small" />
+                  <Text style={styles.recentItemStatus}>{getStatusIcon(truck.status)} {truck.status || "N/A"}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </View>
+    </View>
+  );
+
+  const renderLogout = () => (
+    <View style={styles.logoutSection}>
       <TouchableOpacity
         style={styles.logoutButton}
         onPress={async () => {
@@ -132,26 +245,32 @@ const Dashboard = ({ navigation }) => {
       >
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
-      <View style={{ height: 100 }} />
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={trucks}
-        keyExtractor={(item) => item._id}
-        renderItem={renderTruckCard}
-        ListHeaderComponent={renderHeader}
-        ListFooterComponent={renderFooter}
-        contentContainerStyle={styles.listContent}
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.secondary]} />
         }
-      />
+      >
+        {renderTopBar()}
+        {renderHero()}
+        {renderFleetHealth()}
+        {renderRecentShipments()}
+        {renderLogout()}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
 
-      <TouchableOpacity style={styles.fab} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.fab}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate("Shipments")}
+      >
         <Text style={styles.fabIcon}>➕</Text>
       </TouchableOpacity>
     </View>
@@ -165,13 +284,73 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  listContent: {
+  scrollContent: {
     paddingBottom: spacing.xl,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.edgeMargin,
+    height: 56,
+    backgroundColor: `${colors.surface}cc`,
+    borderBottomWidth: 1,
+    borderBottomColor: `${colors.outlineVariant}30`,
+  },
+  topBarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  logoIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: rounded.md,
+    backgroundColor: colors.primaryContainer,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoIcon: {
+    fontSize: 16,
+  },
+  topBarTitle: {
+    fontSize: typography.headlineMd.fontSize,
+    fontWeight: "700",
+    color: colors.onBackground,
+    fontFamily: typography.fonts.sans,
+  },
+  topBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  topBarBtn: {
+    padding: spacing.xs,
+  },
+  topBarBtnIcon: {
+    fontSize: 18,
+    color: colors.secondary,
+  },
+  avatarWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: `${colors.secondaryContainer}33`,
+    borderWidth: 1,
+    borderColor: `${colors.secondary}33`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.secondary,
+    fontFamily: typography.fonts.sans,
   },
   heroSection: {
     marginHorizontal: spacing.edgeMargin,
     marginTop: spacing.lg,
-    borderRadius: rounded.xl,
+    borderRadius: rounded.lg,
     overflow: "hidden",
     ...shadows.lg,
   },
@@ -268,12 +447,14 @@ const styles = StyleSheet.create({
     color: colors.errorContainer,
     fontFamily: typography.fonts.sans,
   },
+  fleetSection: {
+    marginTop: spacing.lg,
+  },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginHorizontal: spacing.edgeMargin,
-    marginTop: spacing.lg,
     marginBottom: spacing.md,
   },
   sectionTitle: {
@@ -289,18 +470,24 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.mono,
     letterSpacing: 0.6,
   },
-  cardWrapper: {
-    marginHorizontal: spacing.edgeMargin,
-    marginBottom: spacing.sm,
+  fleetScrollContent: {
+    paddingHorizontal: spacing.edgeMargin,
+    gap: spacing.md,
+  },
+  fleetCardWrapper: {
+    minWidth: 280,
+  },
+  fleetEmptyCard: {
+    minWidth: 280,
   },
   fleetCard: {
     padding: spacing.md,
+    gap: spacing.sm,
   },
   fleetCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing.sm,
   },
   fleetCardLeft: {
     flexDirection: "row",
@@ -320,29 +507,124 @@ const styles = StyleSheet.create({
   fleetCardData: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-end",
+  },
+  fleetCardDataItem: {},
+  fleetCardDataItemRight: {
+    alignItems: "flex-end",
   },
   fleetCardLabel: {
     fontSize: 10,
     color: colors.onSurfaceVariant,
-    fontFamily: typography.fonts.mono,
-    letterSpacing: 0.6,
+    fontFamily: typography.fonts.sans,
     marginBottom: 2,
   },
-  fleetCardValue: {
+  fleetCardDataValue: {
     fontSize: typography.bodyLg.fontSize,
     fontWeight: "600",
     color: colors.onSurface,
+    fontFamily: typography.fonts.mono,
+  },
+  progressBar: {
+    width: "100%",
+    height: 6,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: colors.secondary,
+    borderRadius: 3,
+  },
+  fleetEmptyText: {
+    fontSize: typography.bodySm.fontSize,
+    color: colors.onSurfaceVariant,
+    fontFamily: typography.fonts.sans,
+    textAlign: "center",
+    paddingVertical: spacing.md,
+  },
+  recentSection: {
+    marginTop: spacing.lg,
+  },
+  filterBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: rounded.lg,
+    backgroundColor: colors.surfaceContainerLow,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  filterIcon: {
+    fontSize: 16,
+  },
+  recentList: {
+    marginHorizontal: spacing.edgeMargin,
+  },
+  recentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.md,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: rounded.lg,
+    borderWidth: 1,
+    borderColor: `${colors.outlineVariant}33`,
+    marginBottom: spacing.sm,
+  },
+  recentItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    flex: 1,
+  },
+  recentItemIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: rounded.md,
+    backgroundColor: `${colors.secondary}1a`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recentItemIconError: {
+    backgroundColor: `${colors.error}1a`,
+  },
+  recentItemIcon: {
+    fontSize: 18,
+  },
+  recentItemInfo: {
+    flex: 1,
+  },
+  recentItemId: {
+    fontSize: typography.bodySm.fontSize,
+    fontWeight: "700",
+    color: colors.onSurface,
     fontFamily: typography.fonts.sans,
   },
-  fleetCardRight: {
-    alignItems: "flex-end",
+  recentItemRoute: {
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    fontFamily: typography.fonts.sans,
+    marginTop: 2,
   },
-  footerSection: {
+  recentItemRight: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  recentItemStatus: {
+    fontSize: 10,
+    fontFamily: typography.fonts.mono,
+    fontWeight: "500",
+    color: colors.onSurfaceVariant,
+    letterSpacing: 0.3,
+  },
+  logoutSection: {
     marginTop: spacing.sm,
+    marginHorizontal: spacing.edgeMargin,
   },
   logoutButton: {
-    marginHorizontal: spacing.edgeMargin,
     backgroundColor: colors.error,
     paddingVertical: spacing.md,
     borderRadius: rounded.lg,
@@ -353,6 +635,29 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.onError,
     fontFamily: typography.fonts.sans,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: spacing.xl,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: typography.headlineMd.fontSize,
+    fontWeight: "600",
+    color: colors.onSurface,
+    fontFamily: typography.fonts.sans,
+    marginBottom: spacing.xs,
+  },
+  emptySubtitle: {
+    fontSize: typography.bodySm.fontSize,
+    color: colors.onSurfaceVariant,
+    fontFamily: typography.fonts.sans,
+  },
+  bottomSpacer: {
+    height: 100,
   },
   fab: {
     position: "absolute",

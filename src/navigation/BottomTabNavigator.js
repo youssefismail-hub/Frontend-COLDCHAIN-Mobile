@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, typography, spacing, rounded } from "../theme";
 
 import Dashboard from "../screens/Dashboard";
@@ -11,28 +12,38 @@ import Alerts from "../screens/Alerts";
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS = {
-  Dashboard: "📊",
-  Tracking: "📍",
-  Shipments: "📦",
-  Alerts: "⚠️",
+  Dashboard: { active: "📊", inactive: "📊" },
+  Tracking: { active: "📍", inactive: "📍" },
+  Shipments: { active: "📦", inactive: "📦" },
+  Alerts: { active: "⚠️", inactive: "⚠️" },
 };
 
 const BottomTabNavigator = () => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused }) => (
-          <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>
-            {TAB_ICONS[route.name]}
-          </Text>
-        ),
+        tabBarIcon: ({ focused }) => {
+          const icon = TAB_ICONS[route.name];
+          return (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+              <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>
+                {focused ? icon.active : icon.inactive}
+              </Text>
+            </View>
+          );
+        },
         tabBarLabel: ({ focused }) => (
           <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
             {route.name}
           </Text>
         ),
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          { paddingBottom: Math.max(insets.bottom, 8) },
+        ],
         tabBarActiveTintColor: colors.secondary,
         tabBarInactiveTintColor: colors.onSurfaceVariant,
       })}
@@ -40,13 +51,7 @@ const BottomTabNavigator = () => {
       <Tab.Screen name="Dashboard" component={Dashboard} />
       <Tab.Screen name="Tracking" component={LiveTracking} />
       <Tab.Screen name="Shipments" component={Shipments} />
-      <Tab.Screen
-        name="Alerts"
-        component={Alerts}
-        options={{
-          tabBarBadge: undefined,
-        }}
-      />
+      <Tab.Screen name="Alerts" component={Alerts} />
     </Tab.Navigator>
   );
 };
@@ -59,20 +64,29 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 64,
     backgroundColor: `${colors.surface}cc`,
     borderTopWidth: 1,
-    borderTopColor: `${colors.outlineVariant}4d`,
+    borderTopColor: `${colors.outlineVariant}30`,
     paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
+    height: 64,
     elevation: 8,
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
   },
+  tabIconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 32,
+    borderRadius: rounded.full,
+  },
+  tabIconWrapActive: {
+    backgroundColor: `${colors.secondaryContainer}1a`,
+  },
   tabIcon: {
-    fontSize: 18,
+    fontSize: 20,
     opacity: 0.6,
   },
   tabIconActive: {

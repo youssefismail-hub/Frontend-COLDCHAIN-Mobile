@@ -118,7 +118,11 @@ const LiveTracking = ({ navigation }) => {
                 >
                   <Text style={styles.primaryActionText}>📊 View Sensor Log</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryAction} activeOpacity={0.85}>
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  activeOpacity={0.85}
+                  onPress={() => alert("Contact driver feature coming soon")}
+                >
                   <Text style={styles.secondaryActionText}>📞 Contact Driver</Text>
                 </TouchableOpacity>
               </View>
@@ -353,7 +357,7 @@ const styles = StyleSheet.create({
   },
   truckSelector: {
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xl,
   },
   selectorLabel: {
     fontSize: 10,

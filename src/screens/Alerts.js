@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   listContent: {
-    paddingBottom: spacing.xl,
+    paddingBottom: 100,
   },
   header: {
     paddingHorizontal: spacing.edgeMargin,
