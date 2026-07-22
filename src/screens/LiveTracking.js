@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -7,31 +7,110 @@ import {
   StyleSheet,
   RefreshControl,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
-import api from "../services/api";
+import MapView, { Marker, Callout } from "react-native-maps";
+import { io } from "socket.io-client";
+import api, { API_URL } from "../services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import GlassCard from "../components/GlassCard";
 import StatusBadge from "../components/StatusBadge";
 import { colors, spacing, typography, rounded, shadows } from "../theme";
+
+const statusColors = {
+  OK: "#10b981",
+  WARNING: "#f59e0b",
+  CRITICAL: "#ef4444",
+  OFFLINE: "#64748b",
+};
 
 const LiveTracking = ({ navigation }) => {
   const [trucks, setTrucks] = useState([]);
   const [selectedTruck, setSelectedTruck] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const mapRef = useRef(null);
+  const socketRef = useRef(null);
+
+  const companyIdRef = useRef(null);
 
   const loadTrucks = useCallback(async () => {
     try {
       const res = await api.get("/api/trucks");
-      setTrucks(res.data.data);
-      if (res.data.data.length > 0 && !selectedTruck) {
-        setSelectedTruck(res.data.data[0]);
+      const data = res.data.data || [];
+      setTrucks(data);
+      if (data.length > 0 && !selectedTruck) {
+        setSelectedTruck(data[0]);
       }
+      companyIdRef.current = data[0]?.company?._id || data[0]?.company || null;
+      return data;
     } catch (err) {
       console.error("Failed to load trucks:", err.message);
+      return [];
     }
-  }, []);
+  }, [selectedTruck]);
 
   useEffect(() => {
-    loadTrucks();
+    let mounted = true;
+    const init = async () => {
+      const trucksData = await loadTrucks();
+      if (!mounted) return;
+      const cid = trucksData[0]?.company?._id || trucksData[0]?.company;
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
+        const socket = io(API_URL, {
+          autoConnect: true,
+          auth: { token },
+        });
+        socketRef.current = socket;
+        socket.on("connect", () => {
+          if (cid) socket.emit("join_company", cid);
+        });
+        socket.on("telemetry_update", (data) => {
+          if (!mounted) return;
+          setTrucks(prev =>
+            prev.map(t => {
+              if (t._id === data.truckId) {
+                return {
+                  ...t,
+                  temperature: data.temperature,
+                  status: data.status || t.status,
+                  door_open: data.door_open !== undefined ? data.door_open : t.door_open,
+                  latitude: data.latitude !== undefined ? data.latitude : t.latitude,
+                  longitude: data.longitude !== undefined ? data.longitude : t.longitude,
+                  lastSeen: data.timestamp || t.lastSeen,
+                };
+              }
+              return t;
+            })
+          );
+          setSelectedTruck(prev => {
+            if (prev && prev._id === data.truckId) {
+              return {
+                ...prev,
+                temperature: data.temperature,
+                status: data.status || prev.status,
+                door_open: data.door_open !== undefined ? data.door_open : prev.door_open,
+                latitude: data.latitude !== undefined ? data.latitude : prev.latitude,
+                longitude: data.longitude !== undefined ? data.longitude : prev.longitude,
+                lastSeen: data.timestamp || prev.lastSeen,
+              };
+            }
+            return prev;
+          });
+        });
+      } catch (err) {
+        console.error("Socket init error:", err.message);
+      }
+    };
+    init();
+    return () => {
+      mounted = false;
+      if (socketRef.current) {
+        socketRef.current.off("telemetry_update");
+        socketRef.current.disconnect();
+      }
+    };
   }, [loadTrucks]);
 
   const onRefresh = useCallback(async () => {
@@ -39,6 +118,23 @@ const LiveTracking = ({ navigation }) => {
     await loadTrucks();
     setRefreshing(false);
   }, [loadTrucks]);
+
+  const selectedLat = selectedTruck?.latitude;
+  const selectedLng = selectedTruck?.longitude;
+  const hasLocation = selectedLat != null && selectedLng != null;
+
+  const region = hasLocation
+    ? {
+        latitude: selectedLat,
+        longitude: selectedLng,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }
+    : null;
+
+  const markerColor = selectedTruck
+    ? statusColors[selectedTruck.status] || statusColors.OFFLINE
+    : statusColors.OFFLINE;
 
   return (
     <View style={styles.container}>
@@ -52,87 +148,171 @@ const LiveTracking = ({ navigation }) => {
       </View>
 
       <View style={styles.mapArea}>
-        <View style={styles.mapBackground}>
-          <Text style={styles.mapPlaceholder}>📡</Text>
-          <Text style={styles.mapLabel}>Real-time GPS Tracking</Text>
-        </View>
+        {region ? (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={region}
+            showsUserLocation={false}
+            showsCompass={true}
+            showsScale={true}
+          >
+            {trucks
+              .filter(t => t.latitude != null && t.longitude != null)
+              .map(truck => {
+                const color = statusColors[truck.status] || statusColors.OFFLINE;
+                const isSelected = selectedTruck?._id === truck._id;
+                return (
+                  <Marker
+                    key={truck._id}
+                    coordinate={{ latitude: truck.latitude, longitude: truck.longitude }}
+                    title={truck.name}
+                    pinColor={color}
+                    opacity={isSelected ? 1 : 0.7}
+                    onPress={() => setSelectedTruck(truck)}
+                  >
+                    <Callout>
+                      <View style={styles.calloutContainer}>
+                        <Text style={styles.calloutTitle}>{truck.name}</Text>
+                        <Text style={styles.calloutSub}>{truck.plate_number}</Text>
+                        <Text style={styles.calloutTemp}>
+                          {truck.temperature != null
+                            ? `${truck.temperature.toFixed(1)}°C`
+                            : "--"}
+                        </Text>
+                        <View
+                          style={[
+                            styles.calloutBadge,
+                            { backgroundColor: color },
+                          ]}
+                        >
+                          <Text style={styles.calloutBadgeText}>
+                            {truck.status}
+                          </Text>
+                        </View>
+                      </View>
+                    </Callout>
+                  </Marker>
+                );
+              })}
+          </MapView>
+        ) : (
+          <View style={styles.mapBackground}>
+            <Text style={styles.mapPlaceholder}>🗺️</Text>
+            <Text style={styles.mapLabel}>En attente des données GPS...</Text>
+            <ActivityIndicator
+              size="small"
+              color={colors.secondary}
+              style={{ marginTop: spacing.md }}
+            />
+          </View>
+        )}
 
-        {selectedTruck && (
+        {selectedTruck && hasLocation && (
           <View style={styles.sensorOverlay}>
             <GlassCard style={styles.sensorCard}>
               <Text style={styles.sensorLabel}>INTERNAL TEMP</Text>
               <View style={styles.sensorRow}>
-                <Text style={styles.sensorValue}>-18.2°C</Text>
+                <Text style={styles.sensorValue}>
+                  {selectedTruck.temperature != null
+                    ? `${selectedTruck.temperature.toFixed(1)}°C`
+                    : "--"}
+                </Text>
                 <View style={styles.sensorStatus}>
-                  <View style={styles.sensorStatusDot} />
-                  <Text style={styles.sensorStatusText}>Stable</Text>
+                  <View
+                    style={[
+                      styles.sensorStatusDot,
+                      { backgroundColor: markerColor },
+                    ]}
+                  />
+                  <Text style={[styles.sensorStatusText, { color: markerColor }]}>
+                    {selectedTruck.status}
+                  </Text>
                 </View>
-              </View>
-            </GlassCard>
-          </View>
-        )}
-
-        {selectedTruck && (
-          <View style={styles.bottomOverlay}>
-            <GlassCard style={styles.truckInfoCard}>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: "65%" }]} />
-              </View>
-
-              <View style={styles.dataGrid}>
-                <View style={styles.dataItem}>
-                  <Text style={styles.dataLabel}>HUMIDITY</Text>
-                  <View style={styles.dataValueRow}>
-                    <Text style={styles.dataIcon}>💧</Text>
-                    <Text style={styles.dataValue}>45%</Text>
-                  </View>
-                </View>
-                <View style={styles.dataItem}>
-                  <Text style={styles.dataLabel}>EST. ARRIVAL</Text>
-                  <View style={styles.dataValueRow}>
-                    <Text style={styles.dataIcon}>🕐</Text>
-                    <Text style={styles.dataValue}>14:35</Text>
-                  </View>
-                </View>
-                <View style={styles.dataItem}>
-                  <Text style={styles.dataLabel}>BATTERY</Text>
-                  <View style={styles.dataValueRow}>
-                    <Text style={styles.dataIcon}>🔋</Text>
-                    <Text style={styles.dataValue}>92%</Text>
-                  </View>
-                </View>
-                <View style={styles.dataItem}>
-                  <Text style={styles.dataLabel}>PLATE</Text>
-                  <View style={styles.dataValueRow}>
-                    <Text style={styles.dataIcon}>🚚</Text>
-                    <Text style={styles.dataValue}>{selectedTruck.plate_number}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={styles.primaryAction}
-                  onPress={() => navigation.navigate("ShipmentDetails", { truckId: selectedTruck._id })}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.primaryActionText}>📊 View Sensor Log</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.secondaryAction}
-                  activeOpacity={0.85}
-                  onPress={() => alert("Contact driver feature coming soon")}
-                >
-                  <Text style={styles.secondaryActionText}>📞 Contact Driver</Text>
-                </TouchableOpacity>
               </View>
             </GlassCard>
           </View>
         )}
       </View>
 
+      {selectedTruck && (
+        <View style={styles.bottomSheet}>
+          <GlassCard style={styles.truckInfoCard}>
+            <View style={styles.truckInfoHeader}>
+              <View>
+                <Text style={styles.truckName}>{selectedTruck.name}</Text>
+                <Text style={styles.truckPlate}>
+                  {selectedTruck.plate_number}
+                </Text>
+              </View>
+              <StatusBadge status={selectedTruck.status} size="small" />
+            </View>
+
+            <View style={styles.dataGrid}>
+              <View style={styles.dataItem}>
+                <Text style={styles.dataLabel}>PORTE</Text>
+                <Text style={styles.dataValue}>
+                  {selectedTruck.door_open ? "Ouverte" : "Fermée"}
+                </Text>
+              </View>
+              <View style={styles.dataItem}>
+                <Text style={styles.dataLabel}>TEMP MIN</Text>
+                <Text style={styles.dataValue}>
+                  {selectedTruck.min_temperature ?? "--"}°C
+                </Text>
+              </View>
+              <View style={styles.dataItem}>
+                <Text style={styles.dataLabel}>TEMP MAX</Text>
+                <Text style={styles.dataValue}>
+                  {selectedTruck.max_temperature ?? "--"}°C
+                </Text>
+              </View>
+              <View style={styles.dataItem}>
+                <Text style={styles.dataLabel}>STATUT</Text>
+                <Text style={[styles.dataValue, { color: markerColor }]}>
+                  {selectedTruck.status}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.primaryAction}
+                onPress={() =>
+                  navigation.navigate("ShipmentDetails", {
+                    truckId: selectedTruck._id,
+                  })
+                }
+                activeOpacity={0.85}
+              >
+                <Text style={styles.primaryActionText}>
+                  📊 Voir l'historique
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryAction}
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (hasLocation) {
+                    const url = `https://www.google.com/maps?q=${selectedLat},${selectedLng}`;
+                    navigation.navigate("ShipmentDetails", {
+                      truckId: selectedTruck._id,
+                    });
+                    alert(`📍 Position: ${selectedLat.toFixed(4)}, ${selectedLng.toFixed(4)}`);
+                  } else {
+                    alert("Aucune position GPS disponible");
+                  }
+                }}
+              >
+                <Text style={styles.secondaryActionText}>📍 Position</Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+      )}
+
       <View style={styles.truckSelector}>
-        <Text style={styles.selectorLabel}>SELECT VEHICLE</Text>
+        <Text style={styles.selectorLabel}>SÉLECTIONNER UN VÉHICULE</Text>
         <FlatList
           horizontal
           data={trucks}
@@ -143,15 +323,30 @@ const LiveTracking = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.selectorItem,
-                selectedTruck?._id === item._id && styles.selectorItemActive,
+                selectedTruck?._id === item._id &&
+                  styles.selectorItemActive,
               ]}
-              onPress={() => setSelectedTruck(item)}
+              onPress={() => {
+                setSelectedTruck(item);
+                if (item.latitude != null && item.longitude != null) {
+                  mapRef.current?.animateToRegion(
+                    {
+                      latitude: item.latitude,
+                      longitude: item.longitude,
+                      latitudeDelta: 0.05,
+                      longitudeDelta: 0.05,
+                    },
+                    500
+                  );
+                }
+              }}
               activeOpacity={0.8}
             >
               <Text
                 style={[
                   styles.selectorItemName,
-                  selectedTruck?._id === item._id && styles.selectorItemNameActive,
+                  selectedTruck?._id === item._id &&
+                    styles.selectorItemNameActive,
                 ]}
               >
                 {item.name}
@@ -212,6 +407,9 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "relative",
   },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
   mapBackground: {
     flex: 1,
     backgroundColor: colors.surfaceContainer,
@@ -231,6 +429,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: spacing.md,
     left: spacing.edgeMargin,
+    zIndex: 10,
   },
   sensorCard: {
     padding: spacing.md,
@@ -263,45 +462,45 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.onTertiaryContainer,
   },
   sensorStatusText: {
     fontSize: typography.bodySm.fontSize,
     fontWeight: "600",
-    color: colors.onTertiaryContainer,
     fontFamily: typography.fonts.sans,
   },
-  bottomOverlay: {
-    position: "absolute",
-    bottom: spacing.md,
-    left: spacing.edgeMargin,
-    right: spacing.edgeMargin,
+  bottomSheet: {
+    paddingHorizontal: spacing.edgeMargin,
+    paddingBottom: spacing.sm,
   },
   truckInfoCard: {
     padding: spacing.lg,
   },
-  progressBar: {
-    width: "100%",
-    height: 4,
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: 2,
-    marginBottom: spacing.lg,
-    overflow: "hidden",
+  truckInfoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.md,
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.secondary,
-    borderRadius: 2,
+  truckName: {
+    fontSize: typography.bodyLg.fontSize,
+    fontWeight: "700",
+    color: colors.onSurface,
+    fontFamily: typography.fonts.sans,
+  },
+  truckPlate: {
+    fontSize: typography.bodySm.fontSize,
+    color: colors.onSurfaceVariant,
+    fontFamily: typography.fonts.mono,
   },
   dataGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   dataItem: {
     width: "48%",
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   dataLabel: {
     fontSize: 10,
@@ -309,15 +508,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: colors.outline,
     letterSpacing: 0.6,
-    marginBottom: 4,
-  },
-  dataValueRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  dataIcon: {
-    fontSize: 14,
+    marginBottom: 2,
   },
   dataValue: {
     fontSize: typography.dataDisplay.fontSize,
@@ -355,8 +546,38 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     fontFamily: typography.fonts.sans,
   },
+  calloutContainer: {
+    padding: spacing.xs,
+    minWidth: 120,
+  },
+  calloutTitle: {
+    fontWeight: "700",
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  calloutSub: {
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 4,
+  },
+  calloutTemp: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  calloutBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  calloutBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+  },
   truckSelector: {
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
   },
   selectorLabel: {
